@@ -22,25 +22,43 @@ if ($sub_key === '' || $mo_no === '') {
     exit;
 }
 
-$mo_no_with_9 = $mo_no;
-$mo_no_without_9 = $mo_no;
+$variations = [$mo_no];
 
-if (strpos($mo_no, '55') === 0) {
+// Normalize based on length, assuming Brazilian numbers
+if (strlen($mo_no) === 13 && strpos($mo_no, '55') === 0) { // 55 + DD + 9-digit number
     $ddd = substr($mo_no, 2, 2);
-    $numero = substr($mo_no, 4);
-
-    if (strlen($numero) === 8) {
-        $mo_no_with_9 = '55' . $ddd . '9' . $numero;
+    $num_part = substr($mo_no, 4);
+    if (substr($num_part, 0, 1) === '9') {
+        $variations[] = '55' . $ddd . substr($num_part, 1); // without 9
     }
-
-    if (strlen($numero) === 9 && substr($numero, 0, 1) === '9') {
-        $mo_no_without_9 = '55' . $ddd . substr($numero, 1);
+} elseif (strlen($mo_no) === 12 && strpos($mo_no, '55') === 0) { // 55 + DD + 8-digit number
+    $ddd = substr($mo_no, 2, 2);
+    $num_part = substr($mo_no, 4);
+    $variations[] = '55' . $ddd . '9' . $num_part; // with 9
+} elseif (strlen($mo_no) === 11) { // DD + 9-digit number
+    $ddd = substr($mo_no, 0, 2);
+    $num_part = substr($mo_no, 2);
+    $variations[] = '55' . $mo_no; // with CC
+    if (substr($num_part, 0, 1) === '9') {
+        $variations[] = '55' . $ddd . substr($num_part, 1); // with CC and without 9
     }
+} elseif (strlen($mo_no) === 10) { // DD + 8-digit number
+    $ddd = substr($mo_no, 0, 2);
+    $num_part = substr($mo_no, 2);
+    $variations[] = '55' . $mo_no; // with CC
+    $variations[] = '55' . $ddd . '9' . $num_part; // with CC and with 9
 }
 
-$query = "SELECT * FROM users WHERE license_key = ? AND (whatsapp_number = ? OR whatsapp_number = ? OR whatsapp_number = ?) LIMIT 1";
+$unique_variations = array_values(array_unique($variations));
+$placeholders = rtrim(str_repeat('?,', count($unique_variations)), ',');
+
+$query = "SELECT * FROM users WHERE license_key = ? AND whatsapp_number IN ($placeholders) LIMIT 1";
 $stmt = $conn->prepare($query);
-$stmt->bind_param("ssss", $sub_key, $mo_no, $mo_no_with_9, $mo_no_without_9);
+
+$types = 's' . str_repeat('s', count($unique_variations));
+$params = array_merge([$sub_key], $unique_variations);
+
+$stmt->bind_param($types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
 
