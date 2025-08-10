@@ -64,10 +64,16 @@ function generate_license($length = 16) {
  */
 function check_number($number) {
     global $conn;
-    $number = mysqli_real_escape_string($conn, $number);
-
-    $result = mysqli_query($conn, "SELECT 1 FROM users WHERE whatsapp_number = '$number' LIMIT 1");
-    return mysqli_num_rows($result) > 0;
+    $stmt = $conn->prepare("SELECT 1 FROM users WHERE whatsapp_number = ? LIMIT 1");
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param("s", $number);
+    $stmt->execute();
+    $stmt->store_result();
+    $exists = $stmt->num_rows > 0;
+    $stmt->close();
+    return $exists;
 }
 
 function is_license_active($conn) {

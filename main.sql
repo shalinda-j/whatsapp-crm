@@ -1,3 +1,7 @@
+-- WhatsApp CRM - Complete Database Setup
+-- This file consolidates all SQL scripts for the WhatsApp CRM system
+-- Run this on MySQL/MariaDB to create the complete database structure
+
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
@@ -11,14 +15,14 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
-
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Banco de dados: `whats`
+-- Use existing database (remove CREATE DATABASE to avoid permission issues)
+-- Make sure to select the correct database in phpMyAdmin before running this script
 --
 
 -- --------------------------------------------------------
@@ -90,6 +94,8 @@ CREATE TABLE `users` (
   `life_time` varchar(255) NOT NULL,
   `plan_type` varchar(255) NOT NULL,
   `email` varchar(255) DEFAULT NULL,
+  `pc_id` VARCHAR(255) DEFAULT NULL COMMENT 'Device/PC identifier',
+  `skd_id` INT(11) DEFAULT NULL COMMENT 'SKD identifier for device tracking',
   `status` enum('true','false') NOT NULL DEFAULT 'true',
   `plan` enum('true','false') NOT NULL DEFAULT 'true',
   `user_id` varchar(255) NOT NULL
@@ -115,7 +121,9 @@ ALTER TABLE `configurations`
 -- Índices de tabela `users`
 --
 ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_users_license_key` (`license_key`),
+  ADD UNIQUE KEY `uq_users_whatsapp_number` (`whatsapp_number`);
 
 --
 -- AUTO_INCREMENT para tabelas despejadas
@@ -138,8 +146,34 @@ ALTER TABLE `configurations`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+-- --------------------------------------------------------
+
+--
+-- Additional Admin Users
+--
+
+-- Delete any existing superadmin user (if exists)
+DELETE FROM admin WHERE username='superadmin';
+
+-- Create new super_admin user
+INSERT INTO admin (username, name, contact_number, password, user_type, deleted, status, admin_id, start_date, expired_date)
+VALUES ('superadmin', 'Super Administrator', '5582999999999', SHA1('Super@2024'), 'super_admin', 'no', 'true', 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 5 YEAR));
+
+-- Delete any existing admin2 user (if exists)
+DELETE FROM admin WHERE username='admin2';
+
+-- Create admin2 user
+INSERT INTO admin (username, name, contact_number, password, user_type, deleted, status, admin_id, start_date, expired_date)
+VALUES ('admin2', 'Admin 2', '5582999999999', SHA1('Admin@123'), 'admin', 'no', 'true', 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR));
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- Verify the setup
+SELECT 'Database setup complete!' as status;
+SELECT id, username, name, user_type, status FROM admin ORDER BY id;
+DESCRIBE users;
